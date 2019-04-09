@@ -27,7 +27,7 @@ import matplotlib as mpl
 import seaborn as sbn
 
 
-def plot_triangle(evi, lst, opc, zona):
+def plot_triangle(evi, lst, tvdi, opc, zona):
     """
     Grafico de dispersion entre EVI y LST
     - Buscar que Parametros usar de acuerdo al dia Juliano
@@ -41,15 +41,12 @@ def plot_triangle(evi, lst, opc, zona):
     # ########
     x = evi.ReadAsArray().flatten()
     y = lst.ReadAsArray().flatten()
+    z = tvdi.ReadAsArray().flatten()
     # Revisar este filtrado
     cond = np.logical_or(x == -3000, y == -3000)
     x[cond] = np.nan
     y[cond] = np.nan
     # Calculamos el TVDI
-    nume = y - TSm
-    deno = m*x + n - TSm
-    deno[deno==0] = np.nan
-    tvdi = np.divide(nume, deno)   # Nos salvamos de division por cero
     # #################################################################
     # Graficamos la figura
     sbn.set(style='ticks', rc={'axes.grid': True,
@@ -61,22 +58,22 @@ def plot_triangle(evi, lst, opc, zona):
     #######################################
     ### Ploteamos en los distintos valores
     #######################################
-    cnd = tvdi < opc['itvdi'][0]
+    cnd = z < opc['itvdi'][0]
     ax.plot(x[cnd], y[cnd], color='#00734d', linestyle='None',\
             marker='.', ms=2.3, label='<0')
-    cnd = np.logical_and(tvdi >= opc['itvdi'][0], tvdi < opc['itvdi'][1])
+    cnd = np.logical_and(z >= opc['itvdi'][0], z < opc['itvdi'][1])
     ax.plot(x[cnd], y[cnd], color='#00734d', linestyle='None',\
             marker='.', ms=2.3, label='[0, 0.1)')
-    cnd = np.logical_and(tvdi >= opc['itvdi'][1], tvdi < opc['itvdi'][2])
+    cnd = np.logical_and(z >= opc['itvdi'][1], z < opc['itvdi'][2])
     ax.plot(x[cnd], y[cnd], color='#00e6a9', linestyle='None',\
             marker='.', ms=2.3, label='[0.1, 0.2)')
-    cnd = np.logical_and(tvdi >= opc['itvdi'][2], tvdi < opc['itvdi'][3])
+    cnd = np.logical_and(z >= opc['itvdi'][2], z < opc['itvdi'][3])
     ax.plot(x[cnd], y[cnd], color='#EADCDF', linestyle='None',\
             marker='.', ms=2.3, label='[0.2, 0.6)')
-    cnd = np.logical_and(tvdi >= opc['itvdi'][3], tvdi < opc['itvdi'][4])
+    cnd = np.logical_and(z >= opc['itvdi'][3], z < opc['itvdi'][4])
     ax.plot(x[cnd], y[cnd], color='#dfc27d', linestyle='None',\
             marker='.', ms=2.3, label='[0.6, 0.8)')
-    cnd = tvdi > opc['itvdi'][4]
+    cnd = z > opc['itvdi'][4]
     ax.plot(x[cnd], y[cnd], color='#dfc27d', linestyle='None',\
             marker='.', ms=2.3, label='> 0.8')
     # ###########################################################
@@ -157,6 +154,8 @@ def CalcTotalPoints(region, opc):
 
 def ClassTVDI(f_tvdi, opc, clas):
     """
+    Genera un array con la clasificacion de los datos segun el
+    array clas
     """
     dato = f_tvdi.ReadAsArray()
     dato[dato == -3000] = np.nan

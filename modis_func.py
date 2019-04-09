@@ -126,7 +126,8 @@ def get_bit_error(array, opt):
 
 def reproyectar(dataset, M, out_proj, prefix, opc):
     """
-    Esta funcion reproyecta un dataset a la coordenada espacial epsg_to
+    Esta funcion reproyecta un dataset a la coordenada espacial out_proj
+    codificada como string: "SINU" o "LATLON"
     y con el pixel deseado (pixel_size).
     Se guardan en el formato especificado.
 
@@ -186,7 +187,7 @@ def subset(dataset, prefix, region, opc):
     opc: Diccionario con las opciones donde guardar y encontrar
     los respectivos archivos.
     """
-    folder = opc['tmpf']
+    folder = opc['sf']
     zcfolder = opc['zc']
     fecha = opc['f_data']['fecha'].strftime('%Y%j')
     if 'NEA' in region:
@@ -233,7 +234,7 @@ def subset(dataset, prefix, region, opc):
     n_real_data = np.sum(mask_part == 1)
     # Abrimos un archivo para guardar
     mem_drv = gdal.GetDriverByName( 'Gtiff' )
-    fnames = folder + prefix + '_' + region + '_' + fecha + '_subset.tiff'
+    fnames = folder + prefix + '_' + region + '_' + fecha + '.tiff'
     dest = mem_drv.Create(fnames, Cols, Rows, 1, gdal.GDT_Float64)
     opc['l_file'].write('\n')
     opc['l_file'].write('Subset en: ' + fnames + '\n')
@@ -354,7 +355,7 @@ def modis_to_latlon(g, mask, region, prefix, opc):
     return dest
 
 
-def CalcEVI(rf1, rf2, rf3, opc):
+def CalcEVI(rf1, rf2, rf3, zona, opc):
     """
     Calculate EVI from three reflectivity bands.
     The formula is taken from
@@ -391,18 +392,19 @@ def CalcEVI(rf1, rf2, rf3, opc):
     evi = np.where(deno == 0, np.nan, np.divide(nume, deno))
     evi[np.isnan(evi)] = -3000
     # Save data as GeoTiff
-    fecha = opc['f_data']['fecha'].strftime('%Y-%j')
-    aux = rf1.GetDescription().split('_')  # Get file name and split by '_'
-    suffix = '_'.join(aux[6::])  # Join by '_' using only the date and zone
-    namefile = opc['tmpf'] + 'EVI_' + suffix
-    mem_drv = gdal.GetDriverByName( 'GTiff' )
-    dest = mem_drv.Create(namefile, rf1.RasterXSize, rf1.RasterYSize, 1,
-                          gdal.GDT_Float64)
-    dest.SetGeoTransform( rf1.GetGeoTransform() )
-    dest.SetProjection ( rf1.GetProjection() )
-    dest.GetRasterBand(1).SetNoDataValue(-3000)
-    dest.GetRasterBand(1).WriteArray(evi)
-    dest.FlushCache()
+    dest = save_Gtiff(evi, rf1, zona, 'EVI', opc)
+    #fecha = opc['f_data']['fecha'].strftime('%Y-%j')
+    #aux = rf1.GetDescription().split('_')  # Get file name and split by '_'
+    #suffix = '_'.join(aux[6::])  # Join by '_' using only the date and zone
+    #namefile = opc['sf'] + 'EVI_' + suffix
+    #mem_drv = gdal.GetDriverByName( 'GTiff' )
+    #dest = mem_drv.Create(namefile, rf1.RasterXSize, rf1.RasterYSize, 1,
+    #                      gdal.GDT_Float64)
+    #dest.SetGeoTransform( rf1.GetGeoTransform() )
+    #dest.SetProjection ( rf1.GetProjection() )
+    #dest.GetRasterBand(1).SetNoDataValue(-3000)
+    #dest.GetRasterBand(1).WriteArray(evi)
+    #dest.FlushCache()
 
     return dest
 
@@ -469,13 +471,16 @@ def param_tvdi(djul, zona, opc):
     return m, n, TSm
 
 
-def save_Gtiff(dato, t_file, zona, opc):
+def save_Gtiff(dato, t_file, zona, vari, opc):
     """
     Funcion para guardar un GeoTiff en misma proyeccion:
     dato: Matriz Numpy con los datos a guardar
     t_file: Archivo Geotiff con las caracteristicas para guardar el dato
-    DEBEN coincidir las dimensiones, si no, va a tirar error
-    opc: listado de opciones con las carpetas donde guardar
+    (Gdal Class dataset)
+    DEBEN coincidir las dimensiones, si no, va a tirar error.
+    zona: String con la zona que se esta trabajando.
+    vari: String con nombre de variable
+    opc: listado de opciones con las carpetas donde guardar, fecha, etc.
 
     """
     # Abrimos un archivo para guardar
@@ -483,7 +488,7 @@ def save_Gtiff(dato, t_file, zona, opc):
     # Parametros Salida
     yearjul = dt.datetime.strptime(opc['jul_f'], '%Y%j').strftime('%Y%j')
     fechahoy = dt.datetime.today().strftime('%Y%j%H%M')
-    outname = 'TVDI_' + yearjul + '_' + fechahoy + '_' + zona + '.tiff'
+    outname = vari + '_' + yearjul + '_' + fechahoy + '_' + zona + '.tiff'
     outfolder = opc['sf']
     # Datos GeoTiff
     geo_t = t_file.GetGeoTransform ()
@@ -533,7 +538,7 @@ def CalcTVDI(evi_f, lst_f, opc, zona):
     nume[deno==0] = np.nan
     deno[deno==0] = np.nan
     tvdi = np.divide(nume, deno)
-    tvdi_file = save_Gtiff(tvdi, evi_f, zona, opc)
+    tvdi_file = save_Gtiff(tvdi, evi_f, zona, 'TVDI', opc)
     #######################################
 
     return tvdi_file

@@ -61,7 +61,7 @@ def WrkWithLST_files(l_files, opci):
     # PASO 2
     print('Procesando datos de LST para: ' +\
           file_data['fecha'].strftime('%Y-%j'))
-    opci['l_file'].write('Procesando datos de EVI para: ' +\
+    opci['l_file'].write('Procesando datos de LST para: ' +\
                          file_data['fecha'].strftime('%Y-%j') + '\n')
     # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     var = getVar_from_HDF(l_files, 'LST_Day_1km')
@@ -118,7 +118,7 @@ def WrkWithREFLECT_files(l_files, refl, opc):
     # PASO 2
     print('Procesando datos de Reflectividad ' + refl + ' para: ' +\
           file_data['fecha'].strftime('%Y-%j'))
-    opc['l_file'].write('Procesando datos de EVI para: ' +\
+    opc['l_file'].write('Procesando datos de Reflectividad para: ' +\
                         file_data['fecha'].strftime('%Y-%j') + '\n')
     # # # # # # # # # # # # # # # # # # # #
     prf = ['QC_500m_1', 'sur_refl_b01_1', 'sur_refl_b02_1', 'sur_refl_b03_1']
@@ -199,10 +199,13 @@ if __name__ == "__main__":
     out_format = 'GTiff'
     # Valores a graficar
     i_tvdi = [0., 0.1, 0.2, 0.6, 0.8, 1.]
+    # Create folders
+    os.makedirs(salidas, exist_ok=True)
+    os.makedirs(tmpfolder, exist_ok=True)
     # #####################################################################
     # Archivo log
     logfile = 'tvdi_diario_' + juld + '_' + fechahoy + '.log'
-    f = open(outfolder + logfile, 'w')
+    f = open(salidas + logfile, 'w')
     f.write('Calculo de TVDI con datos DIARIOS\n')
     f.write('\n')
     f.write('Datos HDF en: '+ path + '/\n')
@@ -211,8 +214,6 @@ if __name__ == "__main__":
     f.write('Salidas TVDI en: ' + salidas + '\n')
     # #####################################################################
     # Start working with daily temperature
-    os.makedirs(salidas, exist_ok=True)
-    os.makedirs(tmpfolder, exist_ok=True)
     y_path = path + year + month + day + '/'
     prefix = vfile[1] + '*.hdf'
     file_tmp = glob.glob(y_path + prefix)
@@ -238,21 +239,24 @@ if __name__ == "__main__":
 
     # Calculate EVI from Reflectivity
     # #####################################################################
-    print('EVI zona NN')
-    evi_NN = CalcEVI(rf1_NN, rf2_NN, rf3_NN, opc)
-    print('EVI zona PN')
-    evi_PN = CalcEVI(rf1_PN, rf2_PN, rf3_PN, opc)
-    print('EVI zona PS')
-    evi_PS = CalcEVI(rf1_PS, rf2_PS, rf3_PS, opc)
+    print('Calculando EVI en zona NN')
+    evi_NN = CalcEVI(rf1_NN, rf2_NN, rf3_NN, 'NN', opc)
+    print('Calculando EVI en zona PN')
+    evi_PN = CalcEVI(rf1_PN, rf2_PN, rf3_PN, 'PN', opc)
+    print('Calculando EVI en zona PS')
+    evi_PS = CalcEVI(rf1_PS, rf2_PS, rf3_PS, 'PS', opc)
     # #####################################################################
     # Calculamos TVDI
+    print('Calculando TVDI en zona NN')
     tvdi_NN = CalcTVDI(evi_NN, lst_NN, opc, 'NN')
+    print('Calculando TVDI en zona PN')
     tvdi_PN = CalcTVDI(evi_PN, lst_PN, opc, 'PN')
+    print('Calculando TVDI en zona PS')
     tvdi_PS = CalcTVDI(evi_PS, lst_PS, opc, 'PS')
     # Graficamos plano EVI vs LST
-    plot_triangle(evi_NN, lst_NN, opc, 'NN')
-    plot_triangle(evi_PN, lst_PN, opc, 'PN')
-    plot_triangle(evi_PS, lst_PS, opc, 'PS')
+    plot_triangle(evi_NN, lst_NN, tvdi_NN, opc, 'NN')
+    plot_triangle(evi_PN, lst_PN, tvdi_PN, opc, 'PN')
+    plot_triangle(evi_PS, lst_PS, tvdi_PS, opc, 'PS')
     # Generamos tabla con resumen de datos
     CalcTablaResumen(tvdi_NN, tvdi_PN, tvdi_PS, opc)
     # Borramos memoria
